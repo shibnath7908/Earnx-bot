@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+</head>
+
+<body>
+  <!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AdWatch Earn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-950 text-white">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Login -->
+        <div id="login-screen" class="max-w-md mx-auto mt-20 bg-[#1e2937] rounded-3xl p-10">
+            <h1 class="text-4xl font-bold text-center mb-8">Admin Login</h1>
+            <input id="admin-pass" type="password" placeholder="Password" 
+                   class="w-full px-6 py-5 bg-[#334155] rounded-2xl text-xl mb-6">
+            <button onclick="checkLogin()" 
+                    class="w-full py-5 bg-red-600 hover:bg-red-700 rounded-3xl text-xl font-bold">LOGIN</button>
+            <p class="text-center text-xs text-gray-500 mt-8">Demo Password: <span class="text-emerald-400">admin123</span></p>
+        </div>
+
+        <!-- Admin Dashboard (hidden initially) -->
+        <div id="admin-panel" class="hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">Admin Panel</h1>
+                <button onclick="logout()" class="px-6 py-2 bg-red-600 rounded-2xl">Logout</button>
+            </div>
+
+            <!-- Nav -->
+            <div class="flex gap-2 bg-[#334155] rounded-3xl p-2 mb-8">
+                <button onclick="showAdminPage('dash')" class="flex-1 py-4 rounded-3xl font-medium active">Dashboard</button>
+                <button onclick="showAdminPage('users')" class="flex-1 py-4 rounded-3xl font-medium">Users</button>
+                <button onclick="showAdminPage('reports')" class="flex-1 py-4 rounded-3xl font-medium">Reports</button>
+                <button onclick="showAdminPage('settings')" class="flex-1 py-4 rounded-3xl font-medium">Settings</button>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div id="dash" class="page active">
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-[#334155] rounded-3xl p-8 text-center">
+                        <p class="text-emerald-400">Total Users</p>
+                        <p class="text-6xl font-bold mt-3">1248</p>
+                    </div>
+                    <div class="bg-[#334155] rounded-3xl p-8 text-center">
+                        <p class="text-emerald-400">Total Earnings</p>
+                        <p class="text-6xl font-bold mt-3">₹48,920</p>
+                    </div>
+                </div>
+                <div class="mt-8 bg-[#334155] rounded-3xl p-8">
+                    <h3 class="font-bold mb-4">Recent Withdrawals</h3>
+                    <p class="text-sm text-gray-400">Demo data - 5 recent requests</p>
+                </div>
+            </div>
+
+            <!-- USERS -->
+            <div id="users" class="page">
+                <h2 class="font-bold text-2xl mb-6">All Users</h2>
+                <div class="bg-[#334155] rounded-3xl p-6">
+                    <table class="w-full text-sm">
+                        <thead><tr class="text-left"><th>Name</th><th>Balance</th><th>Ads Watched</th></tr></thead>
+                        <tbody class="text-gray-400">
+                            <tr><td>@user1</td><td>₹142</td><td>71</td></tr>
+                            <tr><td>@user2</td><td>₹89</td><td>44</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- REPORTS -->
+            <div id="reports" class="page">
+                <h2 class="font-bold text-2xl mb-6">Ad Reports</h2>
+                <div class="bg-[#334155] rounded-3xl p-8 text-center">
+                    <p class="text-5xl font-bold text-emerald-400">2,847</p>
+                    <p class="text-sm mt-4">Total Ads Watched Today</p>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div id="settings" class="page">
+                <h2 class="font-bold text-2xl mb-6">App Settings</h2>
+                <div class="space-y-6">
+                    <div class="bg-[#334155] p-6 rounded-3xl">
+                        <p class="font-medium">Monetag Zone ID</p>
+                        <input value="YOUR_ZONE_ID" class="w-full bg-black px-6 py-4 rounded-2xl mt-3">
+                    </div>
+                    <button class="w-full py-5 bg-blue-600 rounded-3xl">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function checkLogin() {
+            const pass = document.getElementById('admin-pass').value;
+            if (pass === "admin123") {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                showAdminPage('dash');
+            } else {
+                alert("Wrong password! Demo: admin123");
+            }
+        }
+        function logout() {
+            location.reload();
+        }
+        function showAdminPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+    </script>
+</body>
+</html>
+</body>
+
+</html>
