@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EarnX - Telegram Mini App</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Monetag SDK -->
+  <script src='//libtl.com/sdk.js' data-zone='10848710' data-sdk='show_10848710'></script>
+
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    :root{
+      --bg:#0e0e1a;--bg2:#16162a;--card:#1e1e35;--card2:#252540;
+      --accent:#7c6aff;--accent2:#a78bfa;--gold:#f59e0b;--green:#10b981;
+      --red:#ef4444;--text:#f1f1f1;--text2:#a0a0c0;
+      --border:rgba(124,106,255,0.2);--shadow:0 4px 24px rgba(0,0,0,0.4);
+    }
+    html,body{height:100%;width:100%;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      overflow:hidden;}
+
+    /* LOADING */
+    #loading-screen{
+      position:fixed;inset:0;z-index:9999;background:var(--bg);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+    }
+    .loader-logo{
+      width:90px;height:90px;border-radius:24px;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      display:flex;align-items:center;justify-content:center;font-size:40px;
+      animation:logoPulse 1.5s ease-in-out infinite;
+      box-shadow:0 0 40px rgba(124,106,255,0.5);
+    }
+    @keyframes logoPulse{
+      0%,100%{transform:scale(1);box-shadow:0 0 40px rgba(124,106,255,0.5);}
+      50%{transform:scale(1.08);box-shadow:0 0 60px rgba(124,106,255,0.8);}
+    }
+    .loader-title{font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--accent),#c084fc);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .loader-bar-wrap{width:220px;height:5px;background:var(--card2);border-radius:99px;overflow:hidden;}
+    .loader-bar{height:100%;background:linear-gradient(90deg,var(--accent),#c084fc);
+      border-radius:99px;width:0%;animation:loadBar 2.5s ease-in-out forwards;}
+    @keyframes loadBar{from{width:0%}to{width:100%}}
+    .loader-text{font-size:13px;color:var(--text2);}
+    .loader-dots span{
+      display:inline-block;width:7px;height:7px;border-radius:50%;
+      background:var(--accent);margin:0 3px;animation:dotBounce 1.2s infinite;
+    }
+    .loader-dots span:nth-child(2){animation-delay:0.2s;}
+    .loader-dots span:nth-child(3){animation-delay:0.4s;}
+    @keyframes dotBounce{
+      0%,100%{transform:translateY(0);opacity:0.4;}
+      50%{transform:translateY(-7px);opacity:1;}
+    }
+
+    /* APP LAYOUT */
+    #app{display:none;flex-direction:column;height:100dvh;width:100%;overflow:hidden;}
+    #app.visible{display:flex;}
+
+    /* TOP BAR */
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 16px;background:var(--bg2);
+      border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:100;
+    }
+    .topbar-logo{font-size:20px;font-weight:900;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .topbar-user{display:flex;align-items:center;gap:8px;}
+    .topbar-avatar{
+      width:34px;height:34px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:14px;overflow:hidden;border:2px solid var(--accent);
+    }
+    .topbar-avatar img{width:100%;height:100%;object-fit:cover;}
+    .topbar-points{
+      background:var(--card);border:1px solid var(--border);
+      padding:5px 12px;border-radius:99px;font-size:13px;font-weight:700;
+      color:var(--gold);display:flex;align-items:center;gap:4px;
+    }
+    .hamburger-btn{
+      width:36px;height:36px;border-radius:10px;background:var(--card);
+      border:1px solid var(--border);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:5px;cursor:pointer;
+    }
+    .hamburger-btn span{display:block;width:18px;height:2px;background:var(--text2);border-radius:99px;transition:all 0.3s;}
+
+    /* PAGES */
+    .pages{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+    .page{display:none;padding:16px;animation:fadeIn 0.3s ease;min-height:100%;}
+    .page.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* BOTTOM NAV */
+    .bottom-nav{
+      display:flex;background:var(--bg2);border-top:1px solid var(--border);
+      flex-shrink:0;padding-bottom:env(safe-area-inset-bottom);
+    }
+    .nav-btn{
+      flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:10px 4px;gap:4px;
+      border:none;background:transparent;color:var(--text2);
+      cursor:pointer;transition:all 0.2s;font-size:10px;font-weight:600;
+    }
+    .nav-btn .nav-icon{font-size:20px;transition:transform 0.2s;}
+    .nav-btn.active{color:var(--accent);}
+    .nav-btn.active .nav-icon{transform:scale(1.2);}
+
+    /* SIDEBAR */
+    .sidebar-overlay{
+      position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);
+      backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity 0.3s;
+    }
+    .sidebar-overlay.open{opacity:1;pointer-events:all;}
+    .sidebar{
+      position:fixed;top:0;right:-300px;bottom:0;width:285px;z-index:501;
+      background:var(--bg2);border-left:1px solid var(--border);
+      padding:20px 0;overflow-y:auto;
+      transition:right 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar.open{right:0;}
+    .sidebar-header{
+      padding:0 20px 18px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:12px;position:relative;
+    }
+    .sidebar-avatar{
+      width:52px;height:52px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:22px;overflow:hidden;
+      border:2px solid var(--accent);flex-shrink:0;
+    }
+    .sidebar-avatar img{width:100%;height:100%;object-fit:cover;}
+    .sidebar-user-info{flex:1;min-width:0;}
+    .sidebar-name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sidebar-username{font-size:12px;color:var(--text2);}
+    .sidebar-pts{font-size:13px;color:var(--gold);font-weight:700;margin-top:2px;}
+    .sidebar-close{
+      position:absolute;top:0;right:0;width:30px;height:30px;border-radius:50%;
+      background:var(--card);border:none;color:var(--text2);
+      font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    }
+    .sidebar-section{padding:10px 20px 4px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text2);letter-spacing:1px;}
+    .sidebar-item{
+      display:flex;align-items:center;gap:12px;padding:13px 20px;
+      cursor:pointer;transition:background 0.2s;border:none;background:transparent;
+      width:100%;color:var(--text);font-size:14px;font-weight:500;
+    }
+    .sidebar-item:hover,.sidebar-item:active{background:var(--card);}
+    .sidebar-item .si-icon{font-size:20px;width:24px;text-align:center;}
+    .sidebar-item .si-badge{
+      margin-left:auto;background:var(--accent);color:#fff;
+      font-size:10px;padding:2px 8px;border-radius:99px;font-weight:700;
+    }
+    .sidebar-item .si-badge.gold{background:var(--gold);color:#000;}
+    .sidebar-divider{height:1px;background:var(--border);margin:6px 20px;}
+
+    /* CARDS */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+    .card-title{font-size:13px;color:var(--text2);margin-bottom:4px;}
+    .card-value{font-size:28px;font-weight:800;}
+
+    /* BUTTONS */
+    .btn{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      padding:14px 20px;border-radius:14px;border:none;
+      font-size:15px;font-weight:700;cursor:pointer;
+      transition:all 0.2s;width:100%;letter-spacing:0.3px;
+    }
+    .btn:active{transform:scale(0.97);}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;box-shadow:0 4px 20px rgba(124,106,255,0.35);}
+    .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+    .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border);}
+    .btn-gold{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#000;box-shadow:0 4px 20px rgba(245,158,11,0.35);}
+    .btn-green{background:linear-gradient(135deg,var(--green),#34d399);color:#fff;box-shadow:0 4px 20px rgba(16,185,129,0.35);}
+    .btn-red{background:linear-gradient(135deg,var(--red),#f87171);color:#fff;}
+    .btn-sm{padding:8px 16px;font-size:13px;border-radius:10px;}
+
+    /* HOME PAGE */
+    .hero-card{
+      background:linear-gradient(135deg,#1e1e40,#2d1b69);
+      border:1px solid var(--border);border-radius:20px;
+      padding:24px;margin-bottom:16px;text-align:center;position:relative;overflow:hidden;
+    }
+    .hero-card::before{content:'';position:absolute;inset:0;
+      background:radial-gradient(circle at 50% 0%,rgba(124,106,255,0.2) 0%,transparent 70%);}
+    .hero-bal{font-size:44px;font-weight:900;color:var(--gold);line-height:1;}
+    .hero-label{font-size:13px;color:var(--text2);margin-top:6px;}
+    .hero-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:18px;}
+    .hero-stat{background:rgba(255,255,255,0.06);border-radius:12px;padding:10px;}
+    .hero-stat-v{font-size:18px;font-weight:800;}
+    .hero-stat-l{font-size:10px;color:var(--text2);margin-top:2px;}
+
+    .watch-ad-card{
+      background:linear-gradient(135deg,#1a1a3e,#2d1b69);
+      border:2px solid var(--accent);border-radius:20px;
+      padding:22px;margin-bottom:12px;text-align:center;
+    }
+    .ad-icon{font-size:52px;margin-bottom:10px;animation:adPulse 2s infinite;}
+    @keyframes adPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    .ad-reward{font-size:24px;font-weight:800;color:var(--gold);}
+    .ad-desc{font-size:13px;color:var(--text2);margin:6px 0 14px;}
+
+    .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+    .quick-card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:14px;display:flex;align-items:center;
+      gap:10px;cursor:pointer;transition:border-color 0.2s;
+    }
+    .quick-card:active{border-color:var(--accent);}
+    .quick-icon{font-size:28px;}
+    .quick-val{font-size:17px;font-weight:800;}
+    .quick-lbl{font-size:10px;color:var(--text2);}
+
+    /* TASK PAGE */
+    .task-filter{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;}
+    .task-filter::-webkit-scrollbar{display:none;}
+    .filter-chip{
+      flex-shrink:0;padding:7px 16px;border-radius:99px;
+      background:var(--card);border:1px solid var(--border);
+      font-size:13px;font-weight:600;color:var(--text2);
+      cursor:pointer;transition:all 0.2s;white-space:nowrap;
+    }
+    .filter-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .task-card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:16px;padding:14px;margin-bottom:10px;
+      display:flex;align-items:center;gap:12px;transition:border-color 0.2s;
+    }
+    .task-card.completed{opacity:0.55;}
+    .task-card.featured{border-color:var(--gold);background:linear-gradient(135deg,#1e1e35,#2a1f10);}
+    .task-icon-wrap{
+      width:46px;height:46px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
+    }
+    .task-info{flex:1;min-width:0;}
+    .task-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .task-desc{font-size:12px;color:var(--text2);margin-top:2px;}
+    .task-pts{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap;}
+    .task-btn{padding:7px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+    .task-btn.done{background:var(--green);}
+    .task-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+    .daily-ad-section{
+      background:linear-gradient(135deg,#1a2e1a,#1e3a1e);
+      border:1px solid rgba(16,185,129,0.3);border-radius:16px;
+      padding:16px;margin-bottom:12px;
+    }
+    .daily-progress{height:8px;background:var(--card2);border-radius:99px;margin:10px 0;overflow:hidden;}
+    .daily-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),#34d399);border-radius:99px;transition:width 0.5s;}
+
+    /* LEADERBOARD */
+    .lb-header{
+      background:linear-gradient(135deg,#1e1e40,#2d1b69);
+      border:1px solid var(--border);border-radius:20px;
+      padding:20px;margin-bottom:16px;text-align:center;
+    }
+    .lb-top3{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:16px 0;}
+    .lb-top-item{display:flex;flex-direction:column;align-items:center;gap:6px;}
+    .lb-top-item.first{order:2;}
+    .lb-top-item.second{order:1;}
+    .lb-top-item.third{order:3;}
+    .lb-crown{font-size:20px;}
+    .lb-av{
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-weight:800;background:linear-gradient(135deg,var(--accent),#c084fc);
+      border:3px solid var(--accent);overflow:hidden;
+    }
+    .lb-av.first{width:64px;height:64px;font-size:26px;border-color:var(--gold);}
+    .lb-av.second,.lb-av.third{width:50px;height:50px;font-size:20px;}
+    .lb-av img{width:100%;height:100%;object-fit:cover;}
+    .lb-name{font-size:12px;font-weight:700;max-width:72px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lb-pts-top{font-size:11px;color:var(--gold);font-weight:700;}
+    .lb-badge{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;}
+    .lb-badge.first{background:var(--gold);color:#000;}
+    .lb-badge.second{background:#94a3b8;color:#000;}
+    .lb-badge.third{background:#cd7f32;color:#fff;}
+    .lb-row{
+      display:flex;align-items:center;gap:12px;background:var(--card);
+      border:1px solid var(--border);border-radius:14px;
+      padding:12px;margin-bottom:8px;transition:border-color 0.2s;
+    }
+    .lb-row.me{border-color:var(--accent);background:linear-gradient(135deg,#1e1e40,#1a1a35);}
+    .lb-rank{width:28px;text-align:center;font-weight:800;font-size:14px;color:var(--text2);}
+    .lb-row-av{
+      width:40px;height:40px;border-radius:50%;flex-shrink:0;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:16px;overflow:hidden;
+    }
+    .lb-row-av img{width:100%;height:100%;object-fit:cover;}
+    .lb-row-info{flex:1;min-width:0;}
+    .lb-row-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lb-row-pts{font-size:12px;color:var(--gold);font-weight:600;}
+    .lb-you{font-size:10px;background:var(--accent);color:#fff;padding:2px 7px;border-radius:99px;font-weight:700;}
+
+    /* WITHDRAWAL */
+    .withdraw-bal-card{
+      background:linear-gradient(135deg,#1e1e40,#2d1b69);
+      border:1px solid var(--border);border-radius:20px;
+      padding:22px;margin-bottom:16px;text-align:center;
+    }
+    .method-tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;}
+    .method-tabs::-webkit-scrollbar{display:none;}
+    .method-tab{
+      flex-shrink:0;padding:10px 18px;border-radius:12px;
+      background:var(--card);border:1px solid var(--border);
+      font-size:13px;font-weight:700;color:var(--text2);
+      cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;
+    }
+    .method-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .form-group{margin-bottom:14px;}
+    .form-label{font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600;display:block;}
+    .form-input{
+      width:100%;background:var(--card2);border:1px solid var(--border);
+      border-radius:12px;padding:13px 14px;color:var(--text);
+      font-size:14px;outline:none;transition:border-color 0.2s;
+    }
+    .form-input:focus{border-color:var(--accent);}
+    .form-select{
+      width:100%;background:var(--card2);border:1px solid var(--border);
+      border-radius:12px;padding:13px 14px;color:var(--text);
+      font-size:14px;outline:none;-webkit-appearance:none;appearance:none;
+    }
+    .history-item{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:14px;margin-bottom:8px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .hist-method{font-size:13px;font-weight:700;}
+    .hist-date{font-size:11px;color:var(--text2);margin-top:2px;}
+    .hist-pts{font-size:15px;font-weight:800;color:var(--gold);}
+    .hist-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-top:2px;display:inline-block;}
+    .hist-status.pending{background:rgba(245,158,11,0.2);color:var(--gold);}
+    .hist-status.approved{background:rgba(16,185,129,0.2);color:var(--green);}
+    .hist-status.rejected{background:rgba(239,68,68,0.2);color:var(--red);}
+
+    /* REFER PAGE */
+    .refer-hero{
+      background:linear-gradient(135deg,#1e2a1e,#1a3a2a);
+      border:1px solid rgba(16,185,129,0.3);
+      border-radius:20px;padding:24px;margin-bottom:16px;text-align:center;
+    }
+    .refer-code-box{
+      background:var(--card2);border:2px dashed var(--accent);
+      border-radius:14px;padding:16px;margin:12px 0;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .refer-code{font-size:20px;font-weight:800;color:var(--accent);letter-spacing:2px;}
+    .copy-btn{
+      padding:8px 14px;border-radius:10px;border:none;
+      background:var(--accent);color:#fff;font-size:13px;font-weight:700;
+      cursor:pointer;transition:all 0.2s;white-space:nowrap;
+    }
+    .copy-btn:active{transform:scale(0.95);}
+    .refer-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+    .refer-stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
+    .refer-stat-val{font-size:24px;font-weight:800;color:var(--gold);}
+    .refer-stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;}
+    .step-item{display:flex;gap:12px;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;}
+    .step-num{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),#c084fc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
+    .step-text-title{font-size:14px;font-weight:700;}
+    .step-text-desc{font-size:12px;color:var(--text2);margin-top:3px;}
+
+    /* PROFILE PAGE */
+    .profile-hero{
+      background:linear-gradient(135deg,#1e1e40,#2d1b69);
+      border:1px solid var(--border);border-radius:20px;
+      padding:24px;margin-bottom:16px;text-align:center;
+    }
+    .profile-av{
+      width:84px;height:84px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),#c084fc);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;font-size:34px;margin:0 auto 12px;
+      border:3px solid var(--accent);overflow:hidden;
+    }
+    .profile-av img{width:100%;height:100%;object-fit:cover;}
+    .profile-name{font-size:22px;font-weight:800;}
+    .profile-username{font-size:14px;color:var(--text2);margin-top:4px;}
+    .profile-badge{display:inline-block;margin-top:8px;padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;}
+    .profile-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;}
+    .profile-stat{background:rgba(255,255,255,0.06);border-radius:12px;padding:12px;text-align:center;}
+    .profile-stat-v{font-size:18px;font-weight:800;}
+    .profile-stat-l{font-size:10px;color:var(--text2);margin-top:2px;}
+    .profile-info-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+    .profile-info-row:last-child{border-bottom:none;}
+    .profile-info-label{font-size:13px;color:var(--text2);}
+    .profile-info-val{font-size:13px;font-weight:700;}
+    .badge-wrap{display:flex;flex-wrap:wrap;gap:8px;}
+    .badge-chip{background:var(--card2);border:1px solid var(--border);padding:6px 12px;border-radius:99px;font-size:12px;font-weight:700;}
+
+    /* TOAST */
+    #toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9998;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+    .toast{
+      padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;
+      color:#fff;white-space:nowrap;
+      animation:toastIn 0.3s ease forwards;
+      box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    }
+    .toast.success{background:var(--green);}
+    .toast.error{background:var(--red);}
+    .toast.info{background:var(--accent);}
+    .toast.warn{background:var(--gold);color:#000;}
+    @keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    /* SECTION TITLE */
+    .section-title{font-size:16px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+
+    /* MIN INFO BOX */
+    .info-box{background:rgba(124,106,255,0.1);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--text2);}
+
+    /* ADMIN */
+    .admin-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .admin-stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+    .admin-stat-v{font-size:26px;font-weight:900;color:var(--accent);}
+    .admin-stat-l{font-size:12px;color:var(--text2);margin-top:4px;}
+
+    .scroll-hint{text-align:center;font-size:12px;color:var(--text2);padding:8px;opacity:0.6;}
+  </style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loader-logo">💰</div>
+  <div class="loader-title">EarnX</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-text">Loading your account...</div>
+  <div class="loader-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">⚡ EarnX</div>
+    <div class="topbar-user">
+      <div class="topbar-points">🪙 <span id="topbar-pts">0</span></div>
+      <div class="topbar-avatar" id="topbar-avatar">U</div>
+      <button class="hamburger-btn" onclick="openSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGES -->
+  <div class="pages" id="pages">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <div class="hero-card">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px;">💰 Total Balance</div>
+        <div class="hero-bal" id="home-balance">0</div>
+        <div class="hero-label">Points</div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-v" id="home-ads">0</div>
+            <div class="hero-stat-l">📺 Ads Watched</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-v" id="home-earned">0</div>
+            <div class="hero-stat-l">💎 Total Earned</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-v" id="home-streak">0</div>
+            <div class="hero-stat-l">🔥 Day Streak</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="watch-ad-card">
+        <div class="ad-icon">📺</div>
+        <div class="ad-reward">+10 Points per Ad</div>
+        <div class="ad-desc">Watch ads to earn points instantly!</div>
+        <button class="btn btn-primary" id="watch-ad-btn" onclick="watchAd()">
+          ▶️ Watch Ad Now
+        </button>
+      </div>
+
+      <div class="quick-grid">
+        <div class="quick-card" onclick="navigateTo('tasks')">
+          <div class="quick-icon">✅</div>
+          <div>
+            <div class="quick-val" id="home-tasks-done">0</div>
+            <div class="quick-lbl">Tasks Done</div>
+          </div>
+        </div>
+        <div class="quick-card" onclick="navigateTo('refer')">
+          <div class="quick-icon">🔗</div>
+          <div>
+            <div class="quick-val" id="home-refs">0</div>
+            <div class="quick-lbl">Referrals</div>
+          </div>
+        </div>
+        <div class="quick-card" onclick="navigateTo('leaderboard')">
+          <div class="quick-icon">🏆</div>
+          <div>
+            <div class="quick-val">#—</div>
+            <div class="quick-lbl">My Rank</div>
+          </div>
+        </div>
+        <div class="quick-card" onclick="navigateTo('withdrawal')">
+          <div class="quick-icon">💸</div>
+          <div>
+            <div class="quick-val">10K</div>
+            <div class="quick-lbl">Min Withdraw</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        ℹ️ Earn <strong style="color:var(--gold)">+10 pts</strong> per ad • <strong style="color:var(--green)">+500 pts</strong> per referral • Withdraw at <strong style="color:var(--accent)">10,000 pts</strong>
+      </div>
+    </div>
+
+    <!-- TASKS PAGE -->
+    <div class="page" id="page-tasks">
+      <div class="section-title">✅ Tasks & Missions</div>
+
+      <div class="daily-ad-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:15px;">📺 Daily Ad Goal</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Watch 10 ads per day</div>
+          </div>
+          <div style="font-size:20px;font-weight:800;color:var(--green);"><span id="daily-ad-count">0</span>/10</div>
+        </div>
+        <div class="daily-progress">
+          <div class="daily-progress-fill" id="daily-progress-fill" style="width:0%"></div>
+        </div>
+        <button class="btn btn-green btn-sm" style="width:auto;" onclick="watchAd()">▶️ Watch Ad (+10 pts)</button>
+      </div>
+
+      <div class="task-filter">
+        <div class="filter-chip active" onclick="filterTasks('all',this)">🌟 All</div>
+        <div class="filter-chip" onclick="filterTasks('daily',this)">📅 Daily</div>
+        <div class="filter-chip" onclick="filterTasks('social',this)">📱 Social</div>
+        <div class="filter-chip" onclick="filterTasks('special',this)">⭐ Special</div>
+        <div class="filter-chip" onclick="filterTasks('referral',this)">🔗 Referral</div>
+      </div>
+
+      <div id="tasks-list">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- LEADERBOARD PAGE -->
+    <div class="page" id="page-leaderboard">
+      <div class="lb-header">
+        <div style="font-size:13px;color:var(--text2);">🏆 Top Earners</div>
+        <div style="font-size:22px;font-weight:900;margin-top:4px;">Leaderboard</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;">Compete with top earners worldwide!</div>
+      </div>
+      <div class="lb-top3" id="lb-top3"></div>
+      <div id="lb-list"></div>
+      <div class="scroll-hint">🔄 Updates every few minutes</div>
+    </div>
+
+    <!-- WITHDRAWAL PAGE -->
+    <div class="page" id="page-withdrawal">
+      <div class="withdraw-bal-card">
+        <div style="font-size:13px;color:var(--text2);">💰 Available Balance</div>
+        <div style="font-size:40px;font-weight:900;color:var(--gold);margin:6px 0;" id="wd-balance">0</div>
+        <div style="font-size:12px;color:var(--text2);">Points</div>
+        <div style="margin-top:12px;padding:8px 16px;background:rgba(16,185,129,0.15);border-radius:10px;display:inline-block;font-size:13px;color:var(--green);font-weight:700;">
+          Min: 10,000 pts = ₹100
+        </div>
+      </div>
+
+      <div class="method-tabs">
+        <div class="method-tab active" onclick="selectMethod('upi',this)">💳 UPI</div>
+        <div class="method-tab" onclick="selectMethod('bank',this)">🏦 Bank</div>
+        <div class="method-tab" onclick="selectMethod('paytm',this)">📱 Paytm</div>
+        <div class="method-tab" onclick="selectMethod('usdt',this)">🔐 USDT</div>
+      </div>
+
+      <!-- UPI FORM -->
+      <div id="wd-form-upi">
+        <div class="form-group">
+          <label class="form-label">UPI ID</label>
+          <input class="form-input" id="upi-id" type="text" placeholder="yourname@upi" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Points to Withdraw</label>
+          <input class="form-input" id="upi-amount" type="number" placeholder="Min 10000" min="10000" />
+        </div>
+        <button class="btn btn-primary" onclick="submitWithdrawal('upi')">💸 Request Withdrawal</button>
+      </div>
+
+      <!-- BANK FORM -->
+      <div id="wd-form-bank" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Account Holder Name</label>
+          <input class="form-input" id="bank-name" type="text" placeholder="Full Name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input class="form-input" id="bank-acc" type="text" placeholder="Enter account number" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">IFSC Code</label>
+          <input class="form-input" id="bank-ifsc" type="text" placeholder="SBIN0000123" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Points to Withdraw</label>
+          <input class="form-input" id="bank-amount" type="number" placeholder="Min 10000" min="10000" />
+        </div>
+        <button class="btn btn-primary" onclick="submitWithdrawal('bank')">💸 Request Withdrawal</button>
+      </div>
+
+      <!-- PAYTM FORM -->
+      <div id="wd-form-paytm" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Paytm Mobile Number</label>
+          <input class="form-input" id="paytm-number" type="tel" placeholder="+91 XXXXXXXXXX" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Points to Withdraw</label>
+          <input class="form-input" id="paytm-amount" type="number" placeholder="Min 10000" min="10000" />
+        </div>
+        <button class="btn btn-primary" onclick="submitWithdrawal('paytm')">💸 Request Withdrawal</button>
+      </div>
+
+      <!-- USDT FORM -->
+      <div id="wd-form-usdt" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">USDT Wallet Address</label>
+          <input class="form-input" id="usdt-address" type="text" placeholder="Wallet address..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Network</label>
+          <select class="form-select" id="usdt-network">
+            <option value="TRC20">TRC20 (Tron)</option>
+            <option value="BEP20">BEP20 (BSC)</option>
+            <option value="ERC20">ERC20 (Ethereum)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Points to Withdraw</label>
+          <input class="form-input" id="usdt-amount" type="number" placeholder="Min 10000" min="10000" />
+        </div>
+        <button class="btn btn-primary" onclick="submitWithdrawal('usdt')">💸 Request Withdrawal</button>
+      </div>
+
+      <div style="margin-top:20px;">
+        <div class="section-title">📋 Withdrawal History</div>
+        <div id="wd-history">
+          <div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">No withdrawals yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFER PAGE -->
+    <div class="page" id="page-refer">
+      <div class="refer-hero">
+        <div style="font-size:42px;margin-bottom:8px;">🎁</div>
+        <div style="font-size:20px;font-weight:900;">Invite Friends & Earn!</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:6px;">Get <strong style="color:var(--gold)">+500 pts</strong> for every friend you refer!</div>
+        <div class="refer-code-box">
+          <div class="refer-code" id="refer-code">—</div>
+          <button class="copy-btn" onclick="copyReferCode()">📋 Copy</button>
+        </div>
+        <button class="btn btn-green" onclick="shareReferral()" style="margin-top:6px;">📤 Share Referral Link</button>
+        <div class="refer-stat-grid">
+          <div class="refer-stat-card">
+            <div class="refer-stat-val" id="ref-count">0</div>
+            <div class="refer-stat-lbl">👥 Friends Referred</div>
+          </div>
+          <div class="refer-stat-card">
+            <div class="refer-stat-val" id="ref-earned">0</div>
+            <div class="refer-stat-lbl">💰 Points Earned</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">📖 How It Works</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-text-title">Share Your Link</div>
+          <div class="step-text-desc">Copy your referral code and share with friends</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-text-title">Friend Joins EarnX</div>
+          <div class="step-text-desc">Your friend opens the app using your link</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-text-title">Both Get Rewarded</div>
+          <div class="step-text-desc">You get +500 pts, your friend gets +500 pts bonus!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div class="page" id="page-profile">
+      <div class="profile-hero">
+        <div class="profile-av" id="profile-av">U</div>
+        <div class="profile-name" id="profile-name">User</div>
+        <div class="profile-username" id="profile-username">@username</div>
+        <div class="profile-badge" id="profile-badge">🌱 Newcomer</div>
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-v" id="prof-pts">0</div>
+            <div class="profile-stat-l">🪙 Points</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-v" id="prof-ads">0</div>
+            <div class="profile-stat-l">📺 Ads</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-v" id="prof-refs">0</div>
+            <div class="profile-stat-l">👥 Refs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">👤 Account Info</div>
+        <div class="profile-info-row">
+          <div class="profile-info-label">🆔 Telegram ID</div>
+          <div class="profile-info-val" id="prof-id">—</div>
+        </div>
+        <div class="profile-info-row">
+          <div class="profile-info-label">📅 Joined</div>
+          <div class="profile-info-val" id="prof-joined">—</div>
+        </div>
+        <div class="profile-info-row">
+          <div class="profile-info-label">💎 Total Earned</div>
+          <div class="profile-info-val" id="prof-total">0 pts</div>
+        </div>
+        <div class="profile-info-row">
+          <div class="profile-info-label">✅ Tasks Done</div>
+          <div class="profile-info-val" id="prof-tasks">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">🏅 Achievements</div>
+        <div class="badge-wrap" id="achievement-badges">
+          <span style="color:var(--text2);font-size:13px;">Complete tasks to earn badges!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN PAGE -->
+    <div class="page" id="page-admin">
+      <div class="section-title">🔐 Admin Panel</div>
+      <div class="admin-stat-grid">
+        <div class="admin-stat">
+          <div class="admin-stat-v" id="adm-users">—</div>
+          <div class="admin-stat-l">👥 Total Users</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-v" id="adm-pending">—</div>
+          <div class="admin-stat-l">⏳ Pending WDs</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-v" id="adm-ads">—</div>
+          <div class="admin-stat-l">📺 Ads Today</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-v" id="adm-paid">—</div>
+          <div class="admin-stat-l">✅ Paid Out</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">⚙️ Quick Actions</div>
+        <button class="btn btn-primary" style="margin-bottom:8px;" onclick="showToast('Broadcast feature coming soon!','info')">📢 Send Broadcast</button>
+        <button class="btn btn-gold" style="margin-bottom:8px;" onclick="showToast('Withdrawal approvals coming soon!','info')">💸 Manage Withdrawals</button>
+        <button class="btn btn-red btn-sm" onclick="showToast('Ban feature coming soon!','info')">🚫 Ban User</button>
+      </div>
+    </div>
+
+  </div><!-- end pages -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="navigateTo('home')">
+      <span class="nav-icon">🏠</span>Home
+    </button>
+    <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')">
+      <span class="nav-icon">✅</span>Tasks
+    </button>
+    <button class="nav-btn" id="nav-leaderboard" onclick="navigateTo('leaderboard')">
+      <span class="nav-icon">🏆</span>Rank
+    </button>
+    <button class="nav-btn" id="nav-withdrawal" onclick="navigateTo('withdrawal')">
+      <span class="nav-icon">💸</span>Withdraw
+    </button>
+    <button class="nav-btn" id="nav-refer" onclick="navigateTo('refer')">
+      <span class="nav-icon">🔗</span>Refer
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="navigateTo('profile')">
+      <span class="nav-icon">👤</span>Profile
+    </button>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  <div class="sidebar-header">
+    <div class="sidebar-avatar" id="sb-avatar">U</div>
+    <div class="sidebar-user-info">
+      <div class="sidebar-name" id="sb-name">User</div>
+      <div class="sidebar-username" id="sb-username">@username</div>
+      <div class="sidebar-pts">🪙 <span id="sb-pts">0</span> pts</div>
+    </div>
+  </div>
+
+  <div class="sidebar-menu">
+    <div class="sidebar-section">📍 Navigation</div>
+    <button class="sidebar-item" onclick="navAndClose('home')"><span class="si-icon">🏠</span> Home</button>
+    <button class="sidebar-item" onclick="navAndClose('tasks')"><span class="si-icon">✅</span> Tasks</button>
+    <button class="sidebar-item" onclick="navAndClose('leaderboard')"><span class="si-icon">🏆</span> Leaderboard</button>
+    <button class="sidebar-item" onclick="navAndClose('withdrawal')"><span class="si-icon">💸</span> Withdrawal</button>
+    <button class="sidebar-item" onclick="navAndClose('refer')"><span class="si-icon">🔗</span> Refer & Earn</button>
+    <button class="sidebar-item" onclick="navAndClose('profile')"><span class="si-icon">👤</span> Profile</button>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">💰 Earn</div>
+    <button class="sidebar-item" onclick="closeSidebar();watchAd()"><span class="si-icon">📺</span> Watch Ad <span class="si-badge">+10 pts</span></button>
+    <button class="sidebar-item" onclick="navAndClose('tasks')"><span class="si-icon">🎯</span> Daily Tasks <span class="si-badge">New</span></button>
+    <button class="sidebar-item" onclick="navAndClose('refer')"><span class="si-icon">🎁</span> Refer Friends <span class="si-badge gold">+500 pts</span></button>
+    <button class="sidebar-item" onclick="navAndClose('withdrawal')"><span class="si-icon">💳</span> Withdraw Funds</button>
+    <button class="sidebar-item" onclick="closeSidebar();showDailyChallenges()"><span class="si-icon">🏅</span> Daily Challenges</button>
+    <button class="sidebar-item" onclick="closeSidebar();showStreakBonus()"><span class="si-icon">🔥</span> Streak Bonus</button>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">ℹ️ Info</div>
+    <button class="sidebar-item" onclick="closeSidebar();showToast('EarnX v1.0 — Earn by watching ads!','info')"><span class="si-icon">ℹ️</span> About EarnX</button>
+    <button class="sidebar-item" onclick="closeSidebar();showToast('Support: @EarnXSupport on Telegram','info')"><span class="si-icon">💬</span> Support</button>
+    <button class="sidebar-item" onclick="closeSidebar();showToast('Rules: No cheating. Bans are permanent.','warn')"><span class="si-icon">📜</span> Rules & FAQ</button>
+
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-item" id="admin-menu-btn" style="display:none;" onclick="navAndClose('admin')">
+      <span class="si-icon">🔐</span> Admin Panel <span class="si-badge">Admin</span>
+    </button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<script>
+// =============================================
+// ⚙️ APP CONFIG — Edit these!
+// =============================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDwapjs8enYB3DU1Wpd5tg2nNnbHGkpEpw",
+  authDomain: "adearn-871ee.firebaseapp.com",
+  databaseURL: "https://adearn-871ee-default-rtdb.firebaseio.com",
+  projectId: "adearn-871ee",
+  storageBucket: "adearn-871ee.firebasestorage.app",
+  messagingSenderId: "659452285610",
+  appId: "1:659452285610:web:b20eced20c617382f9f6d3",
+  measurementId: "G-TC69G8YCLP"
+};
+const MONETAG_ZONE_ID = "10848710"; // Monetag zone ID
+const POINTS_PER_AD = 10;
+const MIN_WITHDRAWAL = 10000;
+const REFERRAL_BONUS = 500;
+const ADMIN_IDS = [123456789]; // Replace with your Telegram ID
+const BOT_USERNAME = "Myads2026_Bot";
+
+// =============================================
+// GLOBAL STATE
+// =============================================
+let AppState = {
+  user: null,
+  userData: null,
+  db: null,
+  AdController: null,
+  firebaseReady: false,
+  currentPage: 'home',
+  currentWithdrawMethod: 'upi'
+};
+
+let dailyAdCount = 0;
+
+// =============================================
+// TASK DATA
+// =============================================
+const TASKS = [
+  { id:'t1', title:'Watch 1 Ad', desc:'Watch your first ad today', pts:10, icon:'📺', bg:'#1a1a3e', type:'daily', action:'watchAd' },
+  { id:'t2', title:'Watch 5 Ads', desc:'Watch 5 ads to complete this task', pts:50, icon:'📺', bg:'#1a1a3e', type:'daily', action:'watchAd' },
+  { id:'t3', title:'Watch 10 Ads', desc:'Daily goal — Watch 10 ads!', pts:100, icon:'🎯', bg:'#1e2a1e', type:'daily', action:'watchAd', featured:true },
+  { id:'t4', title:'Join Telegram Channel', desc:'Join our official channel', pts:200, icon:'✈️', bg:'#1a2a2e', type:'social', action:'joinTelegram' },
+  { id:'t5', title:'Follow on Twitter/X', desc:'Follow EarnX on Twitter', pts:150, icon:'🐦', bg:'#1a1e2a', type:'social', action:'followTwitter' },
+  { id:'t6', title:'Share App', desc:'Share EarnX with friends', pts:100, icon:'📤', bg:'#2a1e1a', type:'social', action:'shareApp' },
+  { id:'t7', title:'Refer 1 Friend', desc:'Invite your first friend', pts:500, icon:'🔗', bg:'#1e2a1e', type:'referral', action:'openRefer' },
+  { id:'t8', title:'Refer 5 Friends', desc:'Invite 5 friends to EarnX', pts:2500, icon:'👥', bg:'#1e2a1e', type:'referral', action:'openRefer', featured:true },
+  { id:'t9', title:'Daily Login Bonus', desc:'Log in every day for bonus', pts:20, icon:'📅', bg:'#2a1a2e', type:'daily', action:'dailyLogin' },
+  { id:'t10', title:'Reach 1,000 Points', desc:'Accumulate 1000 total points', pts:100, icon:'💰', bg:'#2a2a1a', type:'special', action:null },
+  { id:'t11', title:'Complete Profile', desc:'Fill in all profile details', pts:50, icon:'👤', bg:'#1e1e2a', type:'special', action:'openProfile' },
+  { id:'t12', title:'Watch 50 Ads Total', desc:'Lifetime milestone: 50 ads!', pts:500, icon:'🏅', bg:'#2a1a1a', type:'special', action:'watchAd', featured:true },
+];
+
+// Demo leaderboard data
+const DEMO_LEADERBOARD = [
+  { name:'Arjun Sharma', username:'arjun99', totalEarned:45200, telegramId:1001, photo:'' },
+  { name:'Priya Singh', username:'priya_s', totalEarned:38700, telegramId:1002, photo:'' },
+  { name:'Rahul Kumar', username:'rahul_k', totalEarned:31500, telegramId:1003, photo:'' },
+  { name:'Sneha Patel', username:'snehap', totalEarned:27900, telegramId:1004, photo:'' },
+  { name:'Vikram Das', username:'vikram_d', totalEarned:24100, telegramId:1005, photo:'' },
+  { name:'Nisha Verma', username:'nishav', totalEarned:19800, telegramId:1006, photo:'' },
+  { name:'Amit Gupta', username:'amit_g', totalEarned:16400, telegramId:1007, photo:'' },
+  { name:'Pooja Rao', username:'pooja_r', totalEarned:13200, telegramId:1008, photo:'' },
+];
+
+// =============================================
+// TOAST FUNCTION
+// =============================================
+function showToast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.style.transition = 'opacity 0.4s';
+    t.style.opacity = '0';
+    setTimeout(() => t.remove(), 400);
+  }, 2800);
+}
+
+// =============================================
+// NAVIGATION
+// =============================================
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+
+  // Scroll to top
+  document.getElementById('pages').scrollTop = 0;
+
+  AppState.currentPage = page;
+
+  // Page-specific actions
+  if (page === 'leaderboard') loadLeaderboard();
+  if (page === 'withdrawal') updateWithdrawPage();
+  if (page === 'profile') updateProfilePage();
+  if (page === 'tasks') renderTasks();
+  if (page === 'refer') updateReferPage();
+}
+
+function navAndClose(page) {
+  closeSidebar();
+  setTimeout(() => navigateTo(page), 200);
+}
+
+// =============================================
+// SIDEBAR
+// =============================================
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// =============================================
+// WITHDRAWAL METHOD
+// =============================================
+function selectMethod(method, el) {
+  AppState.currentWithdrawMethod = method;
+  document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['upi','bank','paytm','usdt'].forEach(m => {
+    const f = document.getElementById('wd-form-' + m);
+    if (f) f.style.display = m === method ? 'block' : 'none';
+  });
+}
+
+// =============================================
+// WATCH AD
+// =============================================
+async function watchAd() {
+  if (AppState.isLoading) return;
+
+  AppState.isLoading = true;
+  const btn = document.getElementById('watch-ad-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Loading Ad...'; }
+
+  try {
+    await show_10848710();
+    await awardAdPoints();
+  } catch(e) {
+    // Ad closed or error — still reward in demo/fallback
+    if (AppState.firebaseReady) {
+      showToast('Ad not available. Try again!', 'error');
+    } else {
+      await awardAdPoints();
+    }
+  }
+
+  AppState.isLoading = false;
+  if (btn) { btn.disabled = false; btn.innerHTML = '▶️ Watch Ad Now'; }
+}
+
+async function awardAdPoints() {
+  const pts = POINTS_PER_AD;
+  AppState.userData.points = (AppState.userData.points || 0) + pts;
+  AppState.userData.totalEarned = (AppState.userData.totalEarned || 0) + pts;
+  AppState.userData.adsWatched = (AppState.userData.adsWatched || 0) + 1;
+
+  dailyAdCount++;
+  localStorage.setItem('earnx_daily_ads', String(dailyAdCount));
+
+  // Firestore update
+  if (AppState.firebaseReady) {
+    try {
+      await fsUpdate('users', String(AppState.user.id), {
+        points: db.increment(pts),
+        totalEarned: db.increment(pts),
+        adsWatched: db.increment(1)
+      });
+    } catch(e) { saveToLocalStorage(); }
+  } else {
+    saveToLocalStorage();
+  }
+
+  updateAllUI();
+  updateDailyAdUI();
+  showToast(`🎉 +${pts} points earned!`, 'success');
+}
+
+// =============================================
+// TASK ACTIONS
+// =============================================
+async function doTask(taskId) {
+  const task = TASKS.find(t => t.id === taskId);
+  if (!task) return;
+
+  const completed = AppState.userData.tasksCompleted || [];
+  if (completed.includes(taskId)) {
+    showToast('Task already completed!', 'warn');
+    return;
+  }
+
+  // Special checks
+  if (taskId === 't2' && AppState.userData.adsWatched < 5) {
+    showToast('Watch 5 ads first!', 'warn'); return;
+  }
+  if (taskId === 't3' && dailyAdCount < 10) {
+    showToast('Watch 10 ads today first!', 'warn'); return;
+  }
+  if (taskId === 't8' && (AppState.userData.referralCount || 0) < 5) {
+    showToast('Refer 5 friends first!', 'warn'); return;
+  }
+  if (taskId === 't10' && AppState.userData.totalEarned < 1000) {
+    showToast('Earn 1000 points first!', 'warn'); return;
+  }
+  if (taskId === 't12' && AppState.userData.adsWatched < 50) {
+    showToast('Watch 50 ads total first!', 'warn'); return;
+  }
+
+  if (task.action === 'watchAd') { watchAd(); return; }
+  if (task.action === 'openRefer') { navigateTo('refer'); return; }
+  if (task.action === 'openProfile') { navigateTo('profile'); return; }
+  if (task.action === 'joinTelegram') { window.open('https://t.me/' + BOT_USERNAME, '_blank'); }
+  if (task.action === 'followTwitter') { window.open('https://twitter.com/', '_blank'); }
+  if (task.action === 'shareApp') { shareReferral(); return; }
+
+  // Award points
+  AppState.userData.points = (AppState.userData.points || 0) + task.pts;
+  AppState.userData.totalEarned = (AppState.userData.totalEarned || 0) + task.pts;
+  AppState.userData.tasksCompleted = [...completed, taskId];
+
+  if (AppState.firebaseReady) {
+    try {
+      await fsUpdate('users', String(AppState.user.id), {
+        points: db.increment(task.pts),
+        totalEarned: db.increment(task.pts),
+        tasksCompleted: db.arrayUnion(taskId)
+      });
+    } catch(e) { saveToLocalStorage(); }
+  } else {
+    saveToLocalStorage();
+  }
+
+  updateAllUI();
+  renderTasks();
+  showToast(`✅ Task done! +${task.pts} pts`, 'success');
+}
+
+function filterTasks(type, el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderTasks(type);
+}
+
+function renderTasks(filter = 'all') {
+  const list = document.getElementById('tasks-list');
+  if (!list) return;
+  const completed = AppState.userData?.tasksCompleted || [];
+  const tasks = filter === 'all' ? TASKS : TASKS.filter(t => t.type === filter);
+
+  list.innerHTML = tasks.map(task => {
+    const done = completed.includes(task.id);
+    return `
+      <div class="task-card ${done ? 'completed' : ''} ${task.featured ? 'featured' : ''}">
+        <div class="task-icon-wrap" style="background:${task.bg}">${task.icon}</div>
+        <div class="task-info">
+          <div class="task-title">${task.title}</div>
+          <div class="task-desc">${task.desc}</div>
+          <div class="task-pts">+${task.pts} pts</div>
+        </div>
+        <button class="task-btn ${done ? 'done' : ''}" ${done ? 'disabled' : ''} onclick="doTask('${task.id}')">
+          ${done ? '✅ Done' : '▶ Go'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================
+// LEADERBOARD
+// =============================================
+async function loadLeaderboard() {
+  let data = [];
+  if (AppState.firebaseReady) {
+    try {
+      data = await fsQuery('users', 'totalEarned', 50);
+    } catch(e) { data = DEMO_LEADERBOARD; }
+  } else {
+    data = DEMO_LEADERBOARD;
+    if (AppState.userData && AppState.userData.totalEarned > 0) {
+      data.push({ ...AppState.userData });
+      data.sort((a,b) => (b.totalEarned||0) - (a.totalEarned||0));
+    }
+  }
+  renderLeaderboard(data);
+}
+
+function renderLeaderboard(data) {
+  const top3 = document.getElementById('lb-top3');
+  const list = document.getElementById('lb-list');
+  if (!top3 || !list) return;
+
+  const medals = ['🥇','🥈','🥉'];
+  const classes = ['first','second','third'];
+  const top = data.slice(0, 3);
+
+  top3.innerHTML = top.map((u, i) => `
+    <div class="lb-top-item ${classes[i]}">
+      <div class="lb-crown">${medals[i]}</div>
+      <div class="lb-av ${classes[i]}">${getInitial(u.name)}</div>
+      <div class="lb-name">${u.name || 'User'}</div>
+      <div class="lb-pts-top">${(u.totalEarned||0).toLocaleString()}</div>
+      <div class="lb-badge ${classes[i]}">${['1st','2nd','3rd'][i]}</div>
+    </div>
+  `).join('');
+
+  const myId = String(AppState.user?.id || '0');
+  list.innerHTML = data.slice(3).map((u, i) => {
+    const rank = i + 4;
+    const isMe = String(u.telegramId) === myId;
+    return `
+      <div class="lb-row ${isMe ? 'me' : ''}">
+        <div class="lb-rank">${rank}</div>
+        <div class="lb-row-av">${getInitial(u.name)}</div>
+        <div class="lb-row-info">
+          <div class="lb-row-name">${u.name || 'User'} ${isMe ? '<span class="lb-you">YOU</span>' : ''}</div>
+          <div class="lb-row-pts">🪙 ${(u.totalEarned||0).toLocaleString()} pts</div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">More users loading...</div>';
+}
+
+function getInitial(name) {
+  return (name || 'U').charAt(0).toUpperCase();
+}
+
+// =============================================
+// WITHDRAWAL
+// =============================================
+async function submitWithdrawal(method) {
+  const bal = AppState.userData?.points || 0;
+  let amount, data = { method };
+
+  if (method === 'upi') {
+    const id = document.getElementById('upi-id')?.value?.trim();
+    amount = parseInt(document.getElementById('upi-amount')?.value || '0');
+    if (!id) { showToast('Enter UPI ID!', 'error'); return; }
+    data.upiId = id;
+  } else if (method === 'bank') {
+    const name = document.getElementById('bank-name')?.value?.trim();
+    const acc = document.getElementById('bank-acc')?.value?.trim();
+    const ifsc = document.getElementById('bank-ifsc')?.value?.trim();
+    amount = parseInt(document.getElementById('bank-amount')?.value || '0');
+    if (!name || !acc || !ifsc) { showToast('Fill all bank details!', 'error'); return; }
+    data.bankName = name; data.accountNo = acc; data.ifsc = ifsc;
+  } else if (method === 'paytm') {
+    const num = document.getElementById('paytm-number')?.value?.trim();
+    amount = parseInt(document.getElementById('paytm-amount')?.value || '0');
+    if (!num) { showToast('Enter Paytm number!', 'error'); return; }
+    data.paytmNumber = num;
+  } else if (method === 'usdt') {
+    const addr = document.getElementById('usdt-address')?.value?.trim();
+    const net = document.getElementById('usdt-network')?.value;
+    amount = parseInt(document.getElementById('usdt-amount')?.value || '0');
+    if (!addr) { showToast('Enter wallet address!', 'error'); return; }
+    data.address = addr; data.network = net;
+  }
+
+  if (amount < MIN_WITHDRAWAL) { showToast(`Minimum ${MIN_WITHDRAWAL.toLocaleString()} pts required!`, 'error'); return; }
+  if (amount > bal) { showToast('Insufficient balance!', 'error'); return; }
+
+  data.amount = amount;
+  data.userId = String(AppState.user?.id || '0');
+  data.userName = AppState.userData?.name || 'User';
+  data.status = 'pending';
+  data.createdAt = new Date().toISOString();
+
+  if (AppState.firebaseReady) {
+    try {
+      await fsAdd('withdrawals', data);
+      await fsUpdate('users', String(AppState.user.id), {
+        points: db.increment(-amount)
+      });
+    } catch(e) { showToast('Server error. Try again!', 'error'); return; }
+  }
+
+  AppState.userData.points -= amount;
+
+  // Save to localStorage history
+  const history = JSON.parse(localStorage.getItem('earnx_wd_history') || '[]');
+  history.unshift(data);
+  localStorage.setItem('earnx_wd_history', JSON.stringify(history));
+
+  updateAllUI();
+  updateWithdrawPage();
+  showToast('✅ Withdrawal request submitted!', 'success');
+}
+
+function updateWithdrawPage() {
+  const el = document.getElementById('wd-balance');
+  if (el) el.textContent = (AppState.userData?.points || 0).toLocaleString();
+
+  const history = JSON.parse(localStorage.getItem('earnx_wd_history') || '[]');
+  const histEl = document.getElementById('wd-history');
+  if (histEl) {
+    if (history.length === 0) {
+      histEl.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">No withdrawals yet.</div>';
+    } else {
+      histEl.innerHTML = history.map(w => `
+        <div class="history-item">
+          <div>
+            <div class="hist-method">${getMethodName(w.method)}</div>
+            <div class="hist-date">${formatDate(w.createdAt)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="hist-pts">-${(w.amount||0).toLocaleString()} pts</div>
+            <div class="hist-status ${w.status}">${w.status}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function getMethodName(m) {
+  const map = { upi:'💳 UPI', bank:'🏦 Bank Transfer', paytm:'📱 Paytm', usdt:'🔐 USDT' };
+  return map[m] || m;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); }
+  catch { return iso; }
+}
+
+// =============================================
+// REFERRAL
+// =============================================
+function copyReferCode() {
+  const code = AppState.userData?.referralCode || String(AppState.user?.id || '0');
+  navigator.clipboard?.writeText(code).then(() => showToast('Referral code copied!', 'success'))
+    .catch(() => showToast('Code: ' + code, 'info'));
+}
+
+function shareReferral() {
+  const code = AppState.userData?.referralCode || String(AppState.user?.id || '0');
+  const link = `https://t.me/${BOT_USERNAME}?start=${code}`;
+  const text = `💰 Join EarnX and earn money by watching ads!\n\nUse my referral link and get +500 bonus points:\n${link}`;
+  if (window.Telegram?.WebApp?.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+  } else if (navigator.share) {
+    navigator.share({ title: 'EarnX', text, url: link });
+  } else {
+    navigator.clipboard?.writeText(link).then(() => showToast('Link copied!', 'success'));
+  }
+}
+
+function updateReferPage() {
+  const code = AppState.userData?.referralCode || String(AppState.user?.id || '0');
+  const el = document.getElementById('refer-code');
+  if (el) el.textContent = code;
+  const rc = document.getElementById('ref-count');
+  if (rc) rc.textContent = AppState.userData?.referralCount || 0;
+  const re = document.getElementById('ref-earned');
+  if (re) re.textContent = ((AppState.userData?.referralCount || 0) * REFERRAL_BONUS).toLocaleString();
+}
+
+// =============================================
+// PROFILE
+// =============================================
+function updateProfilePage() {
+  const d = AppState.userData;
+  const u = AppState.user;
+  if (!d) return;
+
+  const name = d.name || u?.first_name || 'User';
+  const initial = getInitial(name);
+
+  const els = {
+    'profile-name': name,
+    'profile-username': u?.username ? '@' + u.username : '—',
+    'prof-pts': (d.points || 0).toLocaleString(),
+    'prof-ads': d.adsWatched || 0,
+    'prof-refs': d.referralCount || 0,
+    'prof-id': u?.id || '—',
+    'prof-joined': formatDate(new Date().toISOString()),
+    'prof-total': (d.totalEarned || 0).toLocaleString() + ' pts',
+    'prof-tasks': (d.tasksCompleted || []).length,
+  };
+  Object.entries(els).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+
+  const avEl = document.getElementById('profile-av');
+  if (avEl) {
+    if (d.photo) avEl.innerHTML = `<img src="${d.photo}" alt="avatar" />`;
+    else avEl.textContent = initial;
+  }
+
+  // Badge
+  const total = d.totalEarned || 0;
+  const badgeEl = document.getElementById('profile-badge');
+  if (badgeEl) {
+    if (total >= 50000) badgeEl.textContent = '💎 Diamond';
+    else if (total >= 20000) badgeEl.textContent = '🥇 Gold';
+    else if (total >= 5000) badgeEl.textContent = '🥈 Silver';
+    else if (total >= 1000) badgeEl.textContent = '🥉 Bronze';
+    else badgeEl.textContent = '🌱 Newcomer';
+  }
+
+  // Achievements
+  const badges = [];
+  if (d.adsWatched >= 1) badges.push('📺 First Ad');
+  if (d.adsWatched >= 10) badges.push('📺 10 Ads');
+  if (d.adsWatched >= 50) badges.push('📺 50 Ads');
+  if ((d.referralCount||0) >= 1) badges.push('🔗 First Ref');
+  if ((d.referralCount||0) >= 5) badges.push('🔗 5 Refs');
+  if (total >= 1000) badges.push('💰 1K Club');
+  if (total >= 10000) badges.push('💎 10K Club');
+  if ((d.tasksCompleted||[]).length >= 3) badges.push('✅ Task Pro');
+  const achEl = document.getElementById('achievement-badges');
+  if (achEl) {
+    achEl.innerHTML = badges.length
+      ? badges.map(b => `<span class="badge-chip">${b}</span>`).join('')
+      : '<span style="color:var(--text2);font-size:13px;">Complete tasks to earn badges!</span>';
+  }
+}
+
+// =============================================
+// UPDATE ALL UI
+// =============================================
+function updateAllUI() {
+  const d = AppState.userData;
+  if (!d) return;
+  const pts = (d.points || 0).toLocaleString();
+
+  ['topbar-pts','home-balance','sb-pts'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = pts;
+  });
+
+  const updates = {
+    'home-ads': d.adsWatched || 0,
+    'home-earned': (d.totalEarned||0).toLocaleString(),
+    'home-refs': d.referralCount || 0,
+    'home-tasks-done': (d.tasksCompleted||[]).length,
+    'sb-name': d.name || AppState.user?.first_name || 'User',
+    'sb-username': AppState.user?.username ? '@' + AppState.user.username : '',
+  };
+  Object.entries(updates).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+
+  // Avatars
+  const initial = getInitial(d.name || AppState.user?.first_name || 'U');
+  ['topbar-avatar','sb-avatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (d.photo) el.innerHTML = `<img src="${d.photo}" alt="av">`;
+    else el.textContent = initial;
+  });
+
+  // Wd balance
+  const wdBal = document.getElementById('wd-balance');
+  if (wdBal) wdBal.textContent = (d.points || 0).toLocaleString();
+
+  updateReferPage();
+}
+
+function updateDailyAdUI() {
+  const el = document.getElementById('daily-ad-count');
+  const fill = document.getElementById('daily-progress-fill');
+  if (el) el.textContent = dailyAdCount;
+  if (fill) fill.style.width = Math.min(100, (dailyAdCount / 10) * 100) + '%';
+}
+
+// =============================================
+// SIDEBAR EXTRAS
+// =============================================
+function showDailyChallenges() {
+  showToast('🏅 Daily Challenge: Watch 5 ads today!', 'info');
+}
+function showStreakBonus() {
+  const streak = parseInt(localStorage.getItem('earnx_streak') || '0');
+  showToast(`🔥 Your streak: ${streak} days! Keep it up!`, 'info');
+}
+
+// =============================================
+// LOCAL STORAGE (Demo Mode)
+// =============================================
+function saveToLocalStorage() {
+  localStorage.setItem('earnx_user_data', JSON.stringify(AppState.userData));
+}
+
+function loadFromLocalStorage() {
+  const saved = localStorage.getItem('earnx_user_data');
+  if (saved) {
+    try { return JSON.parse(saved); } catch { return null; }
+  }
+  return null;
+}
+
+// =============================================
+// FIRESTORE REST API — No SDK needed
+// =============================================
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+const FS_KEY  = FIREBASE_CONFIG.apiKey;
+
+async function fsGet(collection, docId) {
+  const r = await fetch(`${FS_BASE}/${collection}/${docId}?key=${FS_KEY}`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('fsGet failed: ' + r.status);
+  const json = await r.json();
+  return fsParseDoc(json);
+}
+
+async function fsSet(collection, docId, data) {
+  const body = fsEncodeDoc(data);
+  const r = await fetch(`${FS_BASE}/${collection}/${docId}?key=${FS_KEY}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('fsSet failed: ' + r.status);
+  return true;
+}
+
+async function fsUpdate(collection, docId, fields) {
+  // Read → merge → write
+  const existing = await fsGet(collection, docId) || {};
+  const merged = { ...existing };
+  for (const [k, v] of Object.entries(fields)) {
+    if (typeof v === 'object' && v !== null && v.__increment) {
+      merged[k] = (Number(merged[k]) || 0) + v.__increment;
+    } else if (typeof v === 'object' && v !== null && v.__arrayUnion) {
+      const arr = Array.isArray(merged[k]) ? merged[k] : [];
+      v.__arrayUnion.forEach(item => { if (!arr.includes(item)) arr.push(item); });
+      merged[k] = arr;
+    } else {
+      merged[k] = v;
+    }
+  }
+  return fsSet(collection, docId, merged);
+}
+
+async function fsAdd(collection, data) {
+  const r = await fetch(`${FS_BASE}/${collection}?key=${FS_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fsEncodeDoc(data))
+  });
+  if (!r.ok) throw new Error('fsAdd failed: ' + r.status);
+  return true;
+}
+
+async function fsQuery(collection, orderField, limit) {
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: collection }],
+      orderBy: [{ field: { fieldPath: orderField }, direction: 'DESCENDING' }],
+      limit: limit
+    }
+  };
+  const r = await fetch(`${FS_BASE.replace('/documents','')}/documents:runQuery?key=${FS_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('fsQuery failed: ' + r.status);
+  const arr = await r.json();
+  return arr.filter(x => x.document).map(x => fsParseDoc(x.document));
+}
+
+function fsEncodeDoc(data) {
+  const fields = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v === null || v === undefined) fields[k] = { nullValue: null };
+    else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+    else if (typeof v === 'number') fields[k] = { integerValue: String(v) };
+    else if (typeof v === 'string') fields[k] = { stringValue: v };
+    else if (Array.isArray(v)) fields[k] = { arrayValue: { values: v.map(i => typeof i === 'string' ? { stringValue: i } : { integerValue: String(i) }) } };
+    else fields[k] = { stringValue: String(v) };
+  }
+  return { fields };
+}
+
+function fsParseDoc(doc) {
+  const out = {};
+  for (const [k, v] of Object.entries(doc.fields || {})) {
+    if ('stringValue' in v) out[k] = v.stringValue;
+    else if ('integerValue' in v) out[k] = Number(v.integerValue);
+    else if ('booleanValue' in v) out[k] = v.booleanValue;
+    else if ('nullValue' in v) out[k] = null;
+    else if ('arrayValue' in v) out[k] = (v.arrayValue.values || []).map(i => i.stringValue ?? Number(i.integerValue));
+    else out[k] = null;
+  }
+  return out;
+}
+
+// Shorthand helpers matching old SDK style
+const db = {
+  increment: (n) => ({ __increment: n }),
+  arrayUnion: (...items) => ({ __arrayUnion: items }),
+  serverTimestamp: () => new Date().toISOString()
+};
+
+// =============================================
+// MAIN INIT
+// =============================================
+async function initApp() {
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); }
+
+  const tgUser = tg?.initDataUnsafe?.user || {
+    id: 999999999, first_name: 'Demo', last_name: 'User', username: 'demouser', photo_url: ''
+  };
+  AppState.user = tgUser;
+  const startParam = tg?.initDataUnsafe?.start_param || null;
+  const referrerId = startParam && startParam !== String(tgUser.id) ? startParam : null;
+  let userData = null;
+  let fsOk = false;
+
+  for (let i = 1; i <= 3; i++) {
+    try {
+      userData = await fsGet('users', String(tgUser.id));
+      fsOk = true;
+      if (!userData) {
+        userData = {
+          telegramId: tgUser.id,
+          name: (tgUser.first_name||'') + ' ' + (tgUser.last_name||''),
+          username: tgUser.username || '',
+          photo: tgUser.photo_url || '',
+          points: referrerId ? REFERRAL_BONUS : 0,
+          totalEarned: referrerId ? REFERRAL_BONUS : 0,
+          adsWatched: 0,
+          referralCode: String(tgUser.id),
+          referredBy: referrerId || '',
+          referralCount: 0,
+          tasksCompleted: [],
+          isAdmin: ADMIN_IDS.includes(tgUser.id),
+          banned: false
+        };
+        await fsSet('users', String(tgUser.id), userData);
+        if (referrerId) {
+          await fsUpdate('users', String(referrerId), {
+            points: db.increment(REFERRAL_BONUS),
+            totalEarned: db.increment(REFERRAL_BONUS),
+            referralCount: db.increment(1)
+          });
+        }
+      }
+      break;
+    } catch(e) {
+      if (i < 3) await new Promise(r => setTimeout(r, 800 * i));
+      else { fsOk = false; userData = null; }
+    }
+  }
+  AppState.firebaseReady = fsOk;
+
+  if (!userData) {
+    userData = loadFromLocalStorage() || {
+      telegramId: tgUser.id,
+      name: `${tgUser.first_name||''} ${tgUser.last_name||''}`.trim() || 'Demo User',
+      username: tgUser.username || 'demouser',
+      photo: tgUser.photo_url || '',
+      points: 0, totalEarned: 0, adsWatched: 0,
+      referralCode: String(tgUser.id), referredBy: null,
+      referralCount: 0, tasksCompleted: [],
+      isAdmin: ADMIN_IDS.includes(tgUser.id), banned: false
+    };
+  }
+
+  AppState.userData = userData;
+
+  if (userData.isAdmin) {
+    const adminBtn = document.getElementById('admin-menu-btn');
+    if (adminBtn) adminBtn.style.display = 'flex';
+  }
+
+  const today = new Date().toDateString();
+  const lastDay = localStorage.getItem('earnx_last_day');
+  let streak = parseInt(localStorage.getItem('earnx_streak') || '0');
+  if (lastDay !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    streak = (lastDay === yesterday) ? streak + 1 : 1;
+    localStorage.setItem('earnx_streak', String(streak));
+    localStorage.setItem('earnx_last_day', today);
+  }
+  const streakEl = document.getElementById('home-streak');
+  if (streakEl) streakEl.textContent = streak;
+
+  const adDay = localStorage.getItem('earnx_ad_day');
+  if (adDay === today) {
+    dailyAdCount = parseInt(localStorage.getItem('earnx_daily_ads') || '0');
+  } else {
+    dailyAdCount = 0;
+    localStorage.setItem('earnx_ad_day', today);
+    localStorage.setItem('earnx_daily_ads', '0');
+  }
+
+  updateAllUI();
+  updateProfilePage();
+  updateDailyAdUI();
+  renderTasks();
+
+  setTimeout(() => {
+    const loader = document.getElementById('loading-screen');
+    if (loader) {
+      loader.style.transition = 'opacity 0.5s';
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        const app = document.getElementById('app');
+        if (app) app.classList.add('visible');
+      }, 500);
+    }
+  }, 2500);
+}
+
+// =============================================
+// START
+// =============================================
+document.addEventListener('DOMContentLoaded', function() {
+  initApp();
+});
+</script>
+
+</body>
+</html>
